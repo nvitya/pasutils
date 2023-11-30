@@ -29,6 +29,9 @@ unit strparseobj;
 interface
 
 type
+
+  { TStrParseObj }
+
   TStrParseObj = object  // no heap needed to allocate
   public
     bufstart : PAnsiChar;
@@ -39,13 +42,17 @@ type
     prevptr  : PAnsiChar;    // usually signs token start
     prevlen  : integer;  // usually signs token length
 
+    commentmarker : AnsiChar;
+
     procedure Init(const astr : ansistring); overload;
     procedure Init(const buf; buflen : integer); overload;
 
-    procedure SkipSpaces();
+    procedure SkipSpaces(skiplineend : boolean = true);
+    procedure SkipWhite();
 
     function ReadLine() : boolean;  // sets prevptr, prevlen
     function ReadTo(const checkchars : ansistring) : boolean;  // sets prevptr, prevlen
+    function ReadWhile(const checkchars : ansistring) : boolean;  // sets prevptr, prevlen
     function CheckSymbol(const checkstring : shortstring) : boolean;
     function SearchPattern(const checkstring : ansistring) : boolean;  // sets prevptr, prevlen
     function ReadToChar(const achar : ansichar) : boolean;  // sets prevptr, prevlen
@@ -58,6 +65,8 @@ type
     function UCComparePrev(const checkstring : shortstring) : boolean;
     function PrevToInt() : integer;
     function PrevHexToInt() : integer;
+
+    function GetLineNum() : integer;
   end;
 
 function PCharUCCompare(var ReadPtr : PAnsiChar; len : integer; const checkstring : shortstring) : boolean;
@@ -78,18 +87,35 @@ begin
   ReadPtr := bufstart;
   prevptr := bufstart;
   prevlen := 0;
+  commentmarker := '#';
 end;
 
-procedure TStrParseObj.SkipSpaces();
+procedure TStrParseObj.SkipSpaces(skiplineend : boolean);
 var
   cp : PAnsiChar;
 begin
   cp := ReadPtr;
-  while (cp < bufend) and (cp^ in [#32,#13,#10,#9]) do
+  while (cp < bufend) and ( (cp^ = #32) or (cp^ = #9) or (skiplineend and ((cp^ = #13) or (cp^ = #10))) ) do
   begin
     Inc(cp);
   end;
   ReadPtr := cp;
+end;
+
+procedure TStrParseObj.SkipWhite;
+begin
+  while true do
+  begin
+    SkipSpaces();
+    if (readptr < bufend) and (readptr^ = commentmarker) then
+    begin
+      ReadTo(#10#13);
+    end
+    else
+    begin
+      exit;
+    end;
+  end;
 end;
 
 function TStrParseObj.ReadLine() : boolean;
@@ -151,6 +177,52 @@ begin
   result := false;
   prevlen := cp - ReadPtr;
   ReadPtr := cp;
+end;
+
+function TStrParseObj.ReadWhile(const checkchars : ansistring) : boolean;
+// reads while the checkchars are found
+var
+  ccstart, ccend, ccptr : PAnsiChar;
+  cp : PAnsiChar;
+label
+  char_found;
+begin
+  prevptr := ReadPtr;
+  cp := ReadPtr;
+  ccstart := @ checkchars[1];
+  ccend := ccstart + length(checkchars);
+
+  while cp < bufend do
+  begin
+    // check chars
+    ccptr := ccstart;
+    while ccptr < ccend do
+    begin
+      if ccptr^ = cp^ then  // this is ours, check the next char
+      begin
+        goto char_found;
+      end;
+      Inc(ccptr);
+    end;
+
+    // char not found
+    break;
+
+char_found:
+    Inc(cp);
+  end;
+
+  if 0 = (cp - ReadPtr) then
+  begin
+    result := false;
+    prevlen := 0;
+  end
+  else
+  begin
+    prevlen := cp - ReadPtr;
+    ReadPtr := cp;
+    result := true;
+  end;
 end;
 
 function TStrParseObj.SearchPattern(const checkstring : ansistring) : boolean;
@@ -314,8 +386,10 @@ end;
 
 function TStrParseObj.PrevStr() : ansistring;
 begin
+{$HINTS OFF}
   SetLength(result, prevlen);
   if prevlen > 0 then Move(prevptr^, result[1], prevlen);
+{$HINTS ON}
 end;
 
 function TStrParseObj.UCComparePrev(const checkstring : shortstring) : boolean;
@@ -331,6 +405,19 @@ end;
 function TStrParseObj.PrevHexToInt() : integer;
 begin
   result := PCharHexToInt(prevptr, prevlen);
+end;
+
+function TStrParseObj.GetLineNum : integer;
+var
+  cp : PAnsiChar;
+begin
+  result := 1;
+  cp := bufstart;
+  while (cp < readptr) and (cp < bufend) do
+  begin
+    if cp^ = #10 then Inc(result);
+    Inc(cp);
+  end;
 end;
 
 
