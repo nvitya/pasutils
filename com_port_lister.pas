@@ -422,7 +422,7 @@ begin
     description   := ReadDevValue(usb_dev_path+'/product');
     manufacturer  := ReadDevValue(usb_dev_path+'/manufacturer');
     try
-      interfacename := ReadDevValue(usb_dev_path+'/interface');
+      interfacename := ReadDevValue(usb_if_path+'/interface');
     except
       interfacename := '';
     end;
@@ -448,6 +448,7 @@ var
   srec : TSearchRec;
   bok : boolean;
   cli : TComPortListItem;
+  inspos : integer;
 begin
   result := 0;
   bok := (0 = FindFirst(apattern, faAnyFile, srec));
@@ -455,7 +456,7 @@ begin
   begin
     while bok do
     begin
-      cli := TComPortListItem.Create(srec.Name);
+      cli := TComPortListItem.Create('/dev/'+srec.Name);
       cli.LoadProperties;
       if cli.subsystem = 'platform' then // non-present internal serial port
       begin
@@ -463,7 +464,13 @@ begin
       end
       else
       begin
-        insert(cli, items, length(items));
+        // add to items sorted
+        inspos := 0;
+        while (inspos < length(items)) and (items[inspos].devstr < cli.devstr) do
+        begin
+          Inc(inspos);
+        end;
+        insert(cli, items, inspos);
         result += 1;
       end;
 
