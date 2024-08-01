@@ -58,6 +58,7 @@ type
     function ReadToChar(const achar : ansichar) : boolean;  // sets prevptr, prevlen
 
     function ReadAlphaNum() : boolean;             // sets prevptr, prevlen
+    function ReadIdentifier() : boolean;           // sets prevptr, prevlen
     function ReadQuotedString() : boolean;
     function ReadJsonFieldName() : boolean;
 
@@ -184,6 +185,7 @@ function TStrParseObj.ReadWhile(const checkchars : ansistring) : boolean;
 var
   ccstart, ccend, ccptr : PAnsiChar;
   cp : PAnsiChar;
+  //found : boolean;
 label
   char_found;
 begin
@@ -191,11 +193,13 @@ begin
   cp := ReadPtr;
   ccstart := @ checkchars[1];
   ccend := ccstart + length(checkchars);
+  //found := true;
 
   while cp < bufend do
   begin
     // check chars
     ccptr := ccstart;
+    //found := false;
     while ccptr < ccend do
     begin
       if ccptr^ = cp^ then  // this is ours, check the next char
@@ -336,6 +340,37 @@ begin
     if ((c >= '0') and (c <= '9')) or ((c >= 'A') and (c <= 'Z')) or ((c >= 'a') and (c <= 'z'))
         or (c = '_')
         or ((c = '-') and (cp = readptr))  // sign: allowed only at the first character
+    then
+    begin
+      result := true;
+      Inc(cp);
+    end
+    else
+    begin
+      break;
+    end;
+  end;
+
+  prevlen := cp - readptr;
+  readptr := cp;
+end;
+
+function TStrParseObj.ReadIdentifier : boolean;
+var
+  cp : PAnsiChar;
+  c : AnsiChar;
+begin
+  result := false;
+  cp := ReadPtr;
+  prevptr := ReadPtr;
+
+  while cp < bufend do
+  begin
+    c := cp^;
+
+    if ((c >= 'A') and (c <= 'Z')) or ((c >= 'a') and (c <= 'z'))
+        or (c = '_')
+        or ((cp <> readptr) and (c >= '0') and (c <= '9'))
     then
     begin
       result := true;

@@ -1,4 +1,4 @@
-(*-----------------------------------------------------------------------------
+﻿(*-----------------------------------------------------------------------------
   This file is a part of the PASUTILS project: https://github.com/nvitya/pasutils
   Copyright (c) 2023 Viktor Nagy, nvitya
 
@@ -59,7 +59,6 @@ type
     num_interfaces : integer;
     interfacename  : string;
 
-    // Windows only
     interfacenum   : integer;
 
     constructor Create(adevstr : string);

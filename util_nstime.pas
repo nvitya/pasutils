@@ -61,14 +61,15 @@ uses
 var
   qpcmsscale : double;
 
-procedure init_nstimer(astarttime : TNsTime)
+procedure init_nstimer(astarttime : TNsTime);
 var
   freq : int64;
 begin
   nstime_sys_offset := 0;
 
+  freq := 0;
 	QueryPerformanceFrequency(freq);
-	qpcmsscale = 1000000000 / (double)freq;
+	qpcmsscale := 1000000000 / freq;
 
   nstime_sys_offset := 0;
   nstime_sys_offset := nstime() + astarttime;
@@ -78,8 +79,9 @@ function nstime() : TNsTime;
 var
   qpc : int64;
 begin
+  qpc := 0;
   QueryPerformanceCounter(qpc);
-  result := qpcmsscale * (double)qpc;
+  result := trunc(qpcmsscale * qpc);
 end;
 
 {$else} // linux
