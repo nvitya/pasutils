@@ -58,6 +58,7 @@ type
     function ReadToChar(const achar : ansichar) : boolean;  // sets prevptr, prevlen
 
     function ReadAlphaNum() : boolean;             // sets prevptr, prevlen
+    function ReadFloatNum(afpchar : char) : boolean;             // sets prevptr, prevlen
     function ReadIdentifier() : boolean;           // sets prevptr, prevlen
     function ReadQuotedString() : boolean;
     function ReadJsonFieldName() : boolean;
@@ -339,6 +340,37 @@ begin
 
     if ((c >= '0') and (c <= '9')) or ((c >= 'A') and (c <= 'Z')) or ((c >= 'a') and (c <= 'z'))
         or (c = '_')
+        or ((c = '-') and (cp = readptr))  // sign: allowed only at the first character
+    then
+    begin
+      result := true;
+      Inc(cp);
+    end
+    else
+    begin
+      break;
+    end;
+  end;
+
+  prevlen := cp - readptr;
+  readptr := cp;
+end;
+
+function TStrParseObj.ReadFloatNum(afpchar : char) : boolean;
+var
+  cp : PAnsiChar;
+  c : AnsiChar;
+begin
+  result := false;
+  cp := ReadPtr;
+  prevptr := ReadPtr;
+
+  while cp < bufend do
+  begin
+    c := cp^;
+
+    if ((c >= '0') and (c <= '9'))
+        or (c = afpchar)
         or ((c = '-') and (cp = readptr))  // sign: allowed only at the first character
     then
     begin
